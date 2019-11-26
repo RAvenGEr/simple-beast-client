@@ -345,11 +345,11 @@ protected:
     ResponseParser m_responseParser;
     boost::beast::http::request<RequestBody> m_request;
     boost::asio::ip::tcp::resolver::results_type m_resolveResults;
+    std::shared_ptr<basic_client<RequestBody, ResponseBody>> c;
 
 private:
     virtual std::shared_ptr<client_private> shared_from_this() = 0;
 
-    std::shared_ptr<basic_client<RequestBody, ResponseBody>> c;
     boost::asio::ip::tcp::resolver m_resolver;
     boost::asio::deadline_timer m_timeout;
     url m_url;

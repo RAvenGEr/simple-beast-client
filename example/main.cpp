@@ -51,9 +51,12 @@ int main(int /*argc*/, char* /*argv*/[])
                                       simple_http::fail_reason /*fr*/, boost::string_view message) {
                 std::cout << message << '\n';
             });
-            // Connect to google.com - which enforces HTTPS, through a 301 response.
+            // Connect to a url that redirects through a 301 response.
             // The 1 argument is the number of redirects to follow.
-            client->get(simple_http::url{"http://google.com"}, 1);
+            client->get(
+                simple_http::url{
+                    "http://httpbin.org/redirect-to?url=https%3A%2F%2Fhttpbin.org&status_code=301"},
+                1);
         }
 
         // Run the until requests are complete.

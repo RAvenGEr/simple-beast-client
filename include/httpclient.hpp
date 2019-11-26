@@ -137,6 +137,7 @@ private:
     std::weak_ptr<client_private<RequestBody, ResponseBody>> m_p;
 
     friend class client_private<RequestBody, ResponseBody>;
+    friend class client_private_ssl<RequestBody, ResponseBody>;
 };
 
 typedef boost::beast::http::request<boost::beast::http::empty_body> empty_body_request;

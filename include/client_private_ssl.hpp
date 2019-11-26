@@ -38,13 +38,19 @@ void add_windows_root_certs(boost::asio::ssl::context& ctx)
 }
 #endif
 
-void prepareSslContext()
+auto& globalSslContext()
 {
     static boost::asio::ssl::context ctx{boost::asio::ssl::context::sslv23_client};
+    return ctx;
+}
+
+void prepareSslContext()
+{
     static bool prepared{false};
     if (prepared) {
         return;
     }
+    auto& ctx = globalSslContext();
     namespace ssl = boost::asio::ssl;
     ctx.set_options(ssl::context::default_workarounds | ssl::context::no_sslv2 |
                     ssl::context::no_sslv3 | ssl::context::tlsv12_client);
@@ -68,7 +74,7 @@ class client_private_ssl
 public:
     explicit client_private_ssl(boost::asio::io_context& io,
                                 std::shared_ptr<basic_client<RequestBody, ResponseBody>> cl)
-      : client_private<RequestBody, ResponseBody>{io, cl}, m_stream{io, ctx}
+      : client_private<RequestBody, ResponseBody>{io, cl}, m_stream{io, globalSslContext()}
     {
         prepareSslContext();
     }
@@ -135,7 +141,7 @@ private:
         this->resetTimeout(Header);
         // Receive the HTTP response
         boost::beast::http::async_read_header(
-            m_stream, this->m_buffer, *(this->m_responseParser),
+            m_stream, this->m_buffer, this->m_responseParser,
             std::bind(&client_private_ssl<RequestBody, ResponseBody>::onReadHeader, self(),
                       std::placeholders::_1, std::placeholders::_2));
     }
@@ -145,7 +151,7 @@ private:
         this->resetTimeout(Contents);
         // Receive the HTTP response
         boost::beast::http::async_read(
-            m_stream, this->m_buffer, *(this->m_responseParser),
+            m_stream, this->m_buffer, this->m_responseParser,
             std::bind(&client_private_ssl<RequestBody, ResponseBody>::onRead, self(),
                       std::placeholders::_1, std::placeholders::_2));
     }

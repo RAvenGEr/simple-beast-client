@@ -10,7 +10,7 @@ find_package(Boost 1.66 REQUIRED COMPONENTS
 find_package(OpenSSL)
 find_package (Threads)
 add_definitions(-DENABLE_DIGEST)
-#add_definitions(-DENABLE_HTTPS)
+add_definitions(-DENABLE_HTTPS)
 include_directories( ${Boost_INCLUDE_DIRS}
     ${OPENSSL_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
