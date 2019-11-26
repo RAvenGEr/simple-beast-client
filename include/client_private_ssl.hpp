@@ -41,7 +41,7 @@ void add_windows_root_certs(boost::asio::ssl::context& ctx)
 void prepareSslContext()
 {
     static boost::asio::ssl::context ctx{boost::asio::ssl::context::sslv23_client};
-    static bool prepared = false;
+    static bool prepared{false};
     if (prepared) {
         return;
     }

@@ -247,7 +247,7 @@ protected:
 
     bool handle()
     {
-        static const std::set<boost::beast::http::status> redirectCodes{
+        const std::set<boost::beast::http::status> redirectCodes{
             boost::beast::http::status::moved_permanently, boost::beast::http::status::found,
             boost::beast::http::status::temporary_redirect};
         if (m_responseParser.get().result() == boost::beast::http::status::unauthorized) {

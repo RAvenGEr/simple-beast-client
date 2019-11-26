@@ -192,16 +192,14 @@ private:
         constexpr size_t TargetLoc{9};
         constexpr size_t QueryLoc{13};
 
-        static const boost::regex http_reg(
-            "^((https?|ftp):\\/\\/)?"                               // scheme
-            "(([^\\s$.?#].?[^\\s\\/]*):([^\\s$.?#].?[^\\s\\/]*)@)?" // auth
-            "([^\\s$.?#].[^\\s\\/:]*)"                              // host
-            "(:([0-9]+))?"                                          // port
-            "(([^\\s?#]*)?(([\\?#])([^\\s]*))?)?$");                // target
+        const boost::regex http_reg("^((https?|ftp):\\/\\/)?" // scheme
+                                    "(([^\\s$.?#].?[^\\s\\/]*):([^\\s$.?#].?[^\\s\\/]*)@)?" // auth
+                                    "([^\\s$.?#].[^\\s\\/:]*)"                              // host
+                                    "(:([0-9]+))?"                                          // port
+                                    "(([^\\s?#]*)?(([\\?#])([^\\s]*))?)?$"); // target
         boost::string_view represent{m_representation};
-        boost::string_view::const_iterator start, end;
-        start = represent.cbegin();
-        end = represent.cend();
+        auto start = represent.cbegin();
+        auto end = represent.cend();
         boost::match_results<boost::string_view::const_iterator> matches;
         boost::match_flag_type flags = boost::match_default;
         if (boost::regex_match(start, end, matches, http_reg, flags)) {

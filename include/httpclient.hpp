@@ -95,8 +95,8 @@ public:
     }
 
     void setFailHandler(std::function<void(const boost::beast::http::request<RequestBody>&,
-                                           const boost::beast::http::response<ResponseBody>&, fail_reason,
-                                           boost::string_view)>
+                                           const boost::beast::http::response<ResponseBody>&,
+                                           fail_reason, boost::string_view)>
                             failHandler) noexcept
     {
         m_failHandler = failHandler;
@@ -134,9 +134,7 @@ private:
         }
     }
 
-
     std::weak_ptr<client_private<RequestBody, ResponseBody>> m_p;
-
 
     friend class client_private<RequestBody, ResponseBody>;
 };
