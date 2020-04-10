@@ -62,7 +62,7 @@ private:
     boost::asio::ssl::context m_ctx{boost::asio::ssl::context::tlsv12_client};
 };
 
-boost::asio::ssl::context& ssl_context_g()
+inline boost::asio::ssl::context& ssl_context_g()
 {
     static SslContextManager s{};
     return s.ctx();
