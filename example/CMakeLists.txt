@@ -25,6 +25,9 @@ IF(WIN32)
       "rpcrt4"
       "crypt32"
       "cryptui")
+  if(NOT (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 19.0.23026.0))
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
+  endif()
 ENDIF(WIN32)
 target_link_libraries( http-example
     ${OpenCV_LIBS}

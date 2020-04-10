@@ -4,6 +4,7 @@
 
 #include "httpclient.hpp"
 #include <boost/asio.hpp>
+#include <cassert>
 #include <iostream>
 
 int main(int /*argc*/, char* /*argv*/[])
@@ -13,14 +14,53 @@ int main(int /*argc*/, char* /*argv*/[])
     try {
         boost::asio::io_context ioContext;
 
-        // URL parsing validation tests - will throw exception if any URL is invalid.
+        // URL parsing validation tests.
         simple_http::url test{"http://test.com/target"};
         simple_http::url test2{"www.test.com/target2"};
         simple_http::url test3{"https://test.com"};
         simple_http::url test4{"test.com:80"};
         simple_http::url test5{"http://33.com:400/target"};
-        simple_http::url test6{"http://user:pass@33.com:400/target?val=1&val2=2"};
-        simple_http::url test7{"http://user:pass@33.com"};
+        simple_http::url test6{"http://user:pass@33.com"};
+        simple_http::url test7{"http://user:pass@33.com:400/target?val=1&val2=2"};
+
+        assert(test.scheme() == "http");
+
+        assert(test2.host() == "www.test.com");
+        assert(test2.path() == "/target2");
+
+        assert(test3.scheme() == "https");
+
+        assert(test4.host() == "test.com");
+        assert(test4.port() == "80");
+
+        assert(test5.host() == "33.com");
+        assert(test5.port() == "400");
+
+        assert(test6.scheme() == "http");
+        assert(test6.username() == "user");
+        assert(test6.password() == "pass");
+
+        assert(test7.port() == "400");
+        assert(test7.path() == "/target");
+        assert(test7.query() == "val=1&val2=2");
+
+        simple_http::url testUserNameAndPassword{"https://user76:myP@55w0rd@example.com/path"};
+
+        assert(testUserNameAndPassword.scheme() == "https");
+        assert(testUserNameAndPassword.username() == "user76");
+        assert(testUserNameAndPassword.password() == "myP@55w0rd");
+        assert(testUserNameAndPassword.host() == "example.com");
+        assert(testUserNameAndPassword.path() == "/path");
+
+        // Test an invalid url string
+        simple_http::url broken{"?this"};
+
+        assert(!broken.valid());
+        assert(broken.scheme().empty());
+        assert(broken.host().empty());
+        assert(broken.query().empty());
+
+        std::cout << "simple_http::url tests complete\n";
 
         // Run an asynchronous client test - connect with Digest Authentication
         {
@@ -57,6 +97,17 @@ int main(int /*argc*/, char* /*argv*/[])
                 simple_http::url{
                     "http://httpbin.org/redirect-to?url=https%3A%2F%2Fhttpbin.org&status_code=301"},
                 1);
+        }
+
+        // Run a POST client test
+        {
+            auto client = std::make_shared<simple_http::post_client>(
+                ioContext,
+                [](simple_http::string_body_request& /*req*/,
+                   simple_http::string_body_response& resp) { std::cout << resp << '\n'; });
+
+            client->post(simple_http::url{"http://httpbin.org/post"}, "username=RAvenGEr",
+                         "application/x-www-form-urlencoded");
         }
 
         // Run the until requests are complete.

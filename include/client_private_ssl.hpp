@@ -12,59 +12,61 @@
 
 namespace simple_http {
 
-#if BOOST_OS_WINDOWS
-void add_windows_root_certs(boost::asio::ssl::context& ctx)
-{
-    HCERTSTORE hStore = CertOpenSystemStoreA(0, "ROOT");
-    if (hStore == NULL) {
-        return;
-    }
-
-    X509_STORE* store = X509_STORE_new();
-    PCCERT_CONTEXT pContext = NULL;
-    while ((pContext = CertEnumCertificatesInStore(hStore, pContext)) != NULL) {
-        X509* x509 = d2i_X509(NULL, (const unsigned char**)&pContext->pbCertEncoded,
-                              pContext->cbCertEncoded);
-        if (x509 != NULL) {
-            X509_STORE_add_cert(store, x509);
-            X509_free(x509);
-        }
-    }
-
-    CertFreeCertificateContext(pContext);
-    CertCloseStore(hStore, 0);
-
-    SSL_CTX_set_cert_store(ctx.native_handle(), store);
-}
-#endif
-
-auto& globalSslContext()
-{
-    static boost::asio::ssl::context ctx{boost::asio::ssl::context::sslv23_client};
-    return ctx;
-}
-
-void prepareSslContext()
-{
-    static bool prepared{false};
-    if (prepared) {
-        return;
-    }
-    auto& ctx = globalSslContext();
-    namespace ssl = boost::asio::ssl;
-    ctx.set_options(ssl::context::default_workarounds | ssl::context::no_sslv2 |
-                    ssl::context::no_sslv3 | ssl::context::tlsv12_client);
-    // The below code validates root certificates based on the OS standard methods.
-#if BOOST_OS_WINDOWS
-    add_windows_root_certs(ctx);
-#else
-    ctx.set_default_verify_paths();
-#endif
-    prepared = true;
-}
-
 template<typename RequestBody, typename ResponseBody>
 class basic_client;
+
+class SslContextManager
+{
+public:
+    SslContextManager()
+    {
+        namespace ssl = boost::asio::ssl;
+        m_ctx.set_options(ssl::context::default_workarounds | ssl::context::no_sslv2 |
+                          ssl::context::no_sslv3 | ssl::context::tlsv12_client);
+#if BOOST_OS_WINDOWS
+        addWindowsRootCerts();
+#else
+        m_ctx.set_default_verify_paths();
+#endif
+    }
+
+    auto& ctx() { return m_ctx; }
+
+private:
+#if BOOST_OS_WINDOWS
+    void addWindowsRootCerts()
+    {
+        HCERTSTORE hStore = CertOpenSystemStoreA(0, "ROOT");
+        if (hStore == NULL) {
+            return;
+        }
+
+        X509_STORE* store = X509_STORE_new();
+        PCCERT_CONTEXT pContext = NULL;
+        while ((pContext = CertEnumCertificatesInStore(hStore, pContext)) != NULL) {
+            X509* x509 = d2i_X509(NULL, (const unsigned char**)&pContext->pbCertEncoded,
+                                  pContext->cbCertEncoded);
+            if (x509 != NULL) {
+                X509_STORE_add_cert(store, x509);
+                X509_free(x509);
+            }
+        }
+
+        CertFreeCertificateContext(pContext);
+        CertCloseStore(hStore, 0);
+
+        SSL_CTX_set_cert_store(m_ctx.native_handle(), store);
+    }
+#endif
+
+    boost::asio::ssl::context m_ctx{boost::asio::ssl::context::tlsv12_client};
+};
+
+boost::asio::ssl::context& ssl_context_g()
+{
+    static SslContextManager s{};
+    return s.ctx();
+}
 
 template<typename RequestBody, typename ResponseBody>
 class client_private_ssl
@@ -74,21 +76,19 @@ class client_private_ssl
 public:
     explicit client_private_ssl(boost::asio::io_context& io,
                                 std::shared_ptr<basic_client<RequestBody, ResponseBody>> cl)
-      : client_private<RequestBody, ResponseBody>{io, cl}, m_stream{io, globalSslContext()}
-    {
-        prepareSslContext();
-    }
+      : client_private<RequestBody, ResponseBody>{io, cl}, m_stream{io, ssl_context_g()}
+    {}
 
 private:
     boost::asio::ssl::stream<boost::asio::ip::tcp::socket> m_stream;
 
-    inline std::shared_ptr<client_private<RequestBody, ResponseBody>> shared_from_this()
+    std::shared_ptr<client_private<RequestBody, ResponseBody>> shared_from_this()
     {
         return std::enable_shared_from_this<
             client_private_ssl<RequestBody, ResponseBody>>::shared_from_this();
     }
 
-    inline std::shared_ptr<client_private_ssl<RequestBody, ResponseBody>> self()
+    std::shared_ptr<client_private_ssl<RequestBody, ResponseBody>> self()
     {
         return std::enable_shared_from_this<
             client_private_ssl<RequestBody, ResponseBody>>::shared_from_this();

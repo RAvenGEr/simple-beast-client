@@ -47,6 +47,11 @@ enum fail_reason
     ReadError
 };
 
+using empty_body_request = boost::beast::http::request<boost::beast::http::empty_body>;
+using string_body_request = boost::beast::http::request<boost::beast::http::string_body>;
+using empty_body_response = boost::beast::http::response<boost::beast::http::empty_body>;
+using string_body_response = boost::beast::http::response<boost::beast::http::string_body>;
+
 template<typename RequestBody, typename ResponseBody>
 class client_private_http;
 
@@ -62,16 +67,17 @@ class client_private
     using ResponseParser = boost::beast::http::response_parser<ResponseBody>;
     using HttpPrivate = client_private_http<RequestBody, ResponseBody>;
     using SslPrivate = client_private_ssl<RequestBody, ResponseBody>;
+    using BodyValue = typename RequestBody::value_type;
 
 public:
     static std::shared_ptr<client_private<RequestBody, ResponseBody>> privateForRequest(
         const url& uri, std::shared_ptr<basic_client<RequestBody, ResponseBody>> cl)
     {
-        if (uri.scheme() == "http") {
+        if (uri.scheme() == url::SchemeHttp) {
             return std::make_shared<HttpPrivate>(cl->m_io, cl);
         }
 #ifdef ENABLE_HTTPS
-        if (uri.scheme() == "https") {
+        if (uri.scheme() == url::SchemeHttps) {
             return std::make_shared<SslPrivate>(cl->m_io, cl);
         }
 #endif
@@ -79,28 +85,29 @@ public:
         return nullptr;
     }
 
-    void performRequest(url&& uri, boost::beast::http::verb method,
-                        typename RequestBody::value_type requestBody, int maxRedirects,
-                        bool basicAuth, int version)
+    void performRequest(const url& uri, boost::beast::http::verb method, BodyValue requestBody,
+                        boost::string_view contentType, int maxRedirects, bool basicAuth,
+                        int version)
     {
         c->m_maxRedirects = maxRedirects;
-        m_url = std::forward<url>(uri);
+        m_url = uri;
         m_request.version(version);
         m_request.method(method);
         m_request.target(m_url.target());
         m_request.set(boost::beast::http::field::host, m_url.host());
         m_request.set(boost::beast::http::field::user_agent, c->userAgent());
-        prepareBody(requestBody);
+        if (!contentType.empty()) {
+            m_request.set(boost::beast::http::field::content_type, contentType);
+        }
+        if (method == boost::beast::http::verb::post) {
+            m_request.body() = requestBody;
+            m_request.prepare_payload();
+        }
         if (basicAuth) {
             generateBasicAuthentication();
         }
         startTimeout();
         startResolve();
-    }
-
-    void prepareBody(typename RequestBody::value_type requestBody)
-    {
-        m_request.body() = requestBody;
     }
 
     void abort()
@@ -217,7 +224,6 @@ protected:
             fail(WriteError, "Error writing request: " + ec.message());
             return;
         }
-        //
         initiateReadHeader();
     }
 
@@ -274,6 +280,7 @@ protected:
             } else {
                 // Request is for a new server
                 c->performRequest(std::move(newLocation), m_request.method(), m_request.body(),
+                                  m_request[boost::beast::http::field::content_type],
                                   c->m_maxRedirects - 1, c->m_basicAuthForce, m_request.version());
             }
             return false;
@@ -353,7 +360,7 @@ private:
     boost::asio::ip::tcp::resolver m_resolver;
     boost::asio::deadline_timer m_timeout;
     url m_url;
-}; // namespace simple_http
+};
 
 } // namespace simple_http
 

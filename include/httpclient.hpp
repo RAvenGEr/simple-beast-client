@@ -18,7 +18,6 @@ namespace simple_http {
 /**
  * @brief The simple_client class a client for HTTP
  */
-
 template<typename RequestBody, typename ResponseBody>
 class basic_client : public std::enable_shared_from_this<basic_client<RequestBody, ResponseBody>>
 {
@@ -35,28 +34,30 @@ public:
       : m_io{io}, m_responseHandler{responseHandler}, m_timeoutMs{timeoutMs}
     {}
 
-    void get(url&& uri, int maxRedirects = 0, bool basicAuth = false, int version = 11)
+    void get(const url& uri, int maxRedirects = 0, bool basicAuth = false, int version = 11)
     {
-        performRequest(std::forward<url>(uri), boost::beast::http::verb::get,
-                       typename RequestBody::value_type{}, maxRedirects, basicAuth, version);
+        performRequest(uri, boost::beast::http::verb::get, typename RequestBody::value_type{},
+                       boost::string_view{}, maxRedirects, basicAuth, version);
     }
 
-    void post(url&& uri, typename RequestBody::value_type requestBody, int maxRedirects = 0,
-              bool basicAuth = false, int version = 11)
+    void post(const url& uri, typename RequestBody::value_type requestBody,
+              boost::string_view contentType, int maxRedirects = 0, bool basicAuth = false,
+              int version = 11)
     {
-        performRequest(uri, boost::beast::http::verb::post, requestBody, maxRedirects, basicAuth,
-                       version);
-    }
-
-    void performRequest(url&& uri, boost::beast::http::verb method, int maxRedirects = 0,
-                        bool basicAuth = false, int version = 11)
-    {
-        performRequest(std::forward<url>(uri), method, typename RequestBody::value_type{},
+        performRequest(uri, boost::beast::http::verb::post, requestBody, contentType,
                        maxRedirects, basicAuth, version);
     }
 
-    void performRequest(url&& uri, boost::beast::http::verb method,
-                        typename RequestBody::value_type requestBody, int maxRedirects = 0,
+    void performRequest(const url& uri, boost::beast::http::verb method, int maxRedirects = 0,
+                        bool basicAuth = false, int version = 11)
+    {
+        performRequest(uri, method, typename RequestBody::value_type{}, boost::string_view{},
+                       maxRedirects, basicAuth, version);
+    }
+
+    void performRequest(const url& uri, boost::beast::http::verb method,
+                        typename RequestBody::value_type requestBody,
+                        boost::string_view contentType, int maxRedirects = 0,
                         bool basicAuth = false, int version = 11)
     {
         if (uri.hasAuthentication() && (m_username.empty() || m_password.empty())) {
@@ -66,7 +67,7 @@ public:
             client_private<RequestBody, ResponseBody>::privateForRequest(uri,
                                                                          this->shared_from_this());
         if (httpclient) {
-            httpclient->performRequest(std::forward<url>(uri), method, requestBody, maxRedirects,
+            httpclient->performRequest(uri, method, requestBody, contentType, maxRedirects,
                                        basicAuth, version);
             m_p = httpclient;
         }
@@ -127,10 +128,8 @@ private:
     {
         const boost::beast::http::request<RequestBody> req{};
         const boost::beast::http::response<ResponseBody> resp{};
-        try {
+        if (m_failHandler) {
             m_failHandler(req, resp, reason, message);
-        } catch (std::bad_function_call& /*f*/) {
-            // Discard silently.
         }
     }
 
@@ -140,10 +139,6 @@ private:
     friend class client_private_ssl<RequestBody, ResponseBody>;
 };
 
-typedef boost::beast::http::request<boost::beast::http::empty_body> empty_body_request;
-typedef boost::beast::http::request<boost::beast::http::string_body> string_body_request;
-typedef boost::beast::http::response<boost::beast::http::empty_body> empty_body_response;
-typedef boost::beast::http::response<boost::beast::http::string_body> string_body_response;
 typedef basic_client<boost::beast::http::empty_body, boost::beast::http::string_body> get_client;
 typedef basic_client<boost::beast::http::string_body, boost::beast::http::string_body> post_client;
 

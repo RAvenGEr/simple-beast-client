@@ -9,6 +9,7 @@
 #include <string>
 
 namespace simple_http {
+
 /**
  * @brief The url class a representation of an HTTP url with defaults for port and scheme
  */
@@ -20,6 +21,10 @@ class url
     }
 
 public:
+    static constexpr char SchemeHttps[6]{"https"};
+    static constexpr char SchemeHttp[5]{"http"};
+    static constexpr char SchemeFtp[4]{"ftp"};
+
     url() noexcept = default;
 
     url(boost::string_view url) : m_representation{url.to_string()} { parseRepresentation(); }
@@ -30,44 +35,45 @@ public:
         boost::string_view username = boost::string_view(),
         boost::string_view password = boost::string_view())
     {
-        size_t host_off{};
-        size_t port_off{};
-        size_t username_off{};
-        size_t password_off{};
-        size_t target_off{};
         if (!scheme.empty()) {
             m_representation = scheme.to_string();
             m_representation += "://";
-        }
-        if (!username.empty() && !password.empty()) {
-            username_off = m_representation.length();
-            m_representation += username.to_string() + ':';
-            password_off = m_representation.length();
-            m_representation += password.to_string();
-            m_representation += '@';
-        }
-        host_off = m_representation.length();
-        m_representation += host.to_string();
-        if (!port.empty()) {
-            m_representation += ':';
-            port_off = m_representation.length();
-            m_representation += port.to_string();
-        }
-        target_off = m_representation.length();
-        m_representation += target.to_string();
-        m_host = boost::string_view{m_representation.data() + host_off, host.length()};
-        m_target = boost::string_view{m_representation.data() + target_off, target.length()};
-        if (!scheme.empty()) {
             m_scheme = boost::string_view{m_representation.data(), scheme.length()};
         }
-        if (!username.empty() && !password.empty()) {
+        if (!username.empty()) {
+            size_t username_off = m_representation.length();
+            m_representation += username.to_string();
             m_username =
                 boost::string_view{m_representation.data() + username_off, username.length()};
-            m_password =
-                boost::string_view{m_representation.data() + password_off, password.length()};
+            if (!password.empty()) {
+                m_representation + ':';
+                size_t password_off = m_representation.length();
+                m_representation += password.to_string();
+                m_representation += '@';
+                m_password =
+                    boost::string_view{m_representation.data() + password_off, password.length()};
+            }
         }
+        size_t host_off = m_representation.length();
+        m_representation += host.to_string();
+        m_host = boost::string_view{m_representation.data() + host_off, host.length()};
         if (!port.empty()) {
+            m_representation += ':';
+            size_t port_off = m_representation.length();
+            m_representation += port.to_string();
             m_port = boost::string_view{m_representation.data() + port_off, port.length()};
+        }
+        size_t target_off = m_representation.length();
+        m_representation += target.to_string();
+        m_target = boost::string_view{m_representation.data() + target_off, target.length()};
+        const auto sep = m_target.find('?');
+        if (sep != m_target.npos) {
+            size_t query_off = target_off + sep + 1;
+            m_path = boost::string_view{m_representation.data() + target_off, sep};
+            m_query =
+                boost::string_view{m_representation.data() + query_off, target.length() - sep - 1};
+        } else {
+            m_path = m_target;
         }
     }
 
@@ -94,69 +100,35 @@ public:
 
     url& operator=(url&& other) noexcept
     {
-        const auto schemeStart = view_start(other.m_representation, other.m_scheme);
-        const auto hostStart = view_start(other.m_representation, other.m_host);
-        const auto portStart = view_start(other.m_representation, other.m_port);
-        const auto usernameStart = view_start(other.m_representation, other.m_username);
-        const auto passwordStart = view_start(other.m_representation, other.m_password);
-        const auto targetStart = view_start(other.m_representation, other.m_target);
-        const auto queryStart = view_start(other.m_representation, other.m_query);
-
-        m_representation = std::move(other.m_representation);
-        if (!other.m_scheme.empty()) {
-            m_scheme = {m_representation.data() + schemeStart, other.m_scheme.size()};
-        } else {
-            m_scheme.clear();
-        }
-        if (!other.m_host.empty()) {
-            m_host = {m_representation.data() + hostStart, other.m_host.size()};
-        } else {
-            m_host.clear();
-        }
-        if (!other.m_port.empty()) {
-            m_port = {m_representation.data() + portStart, other.m_port.size()};
-        } else {
-            m_port.clear();
-        }
-        if (!other.m_username.empty()) {
-            m_username = {m_representation.data() + usernameStart, other.m_username.size()};
-        } else {
-            m_username.clear();
-        }
-        if (!other.m_password.empty()) {
-            m_password = {m_representation.data() + passwordStart, other.m_password.size()};
-        } else {
-            m_password.clear();
-        }
-        if (!other.m_target.empty()) {
-            m_target = {m_representation.data() + targetStart, other.m_target.size()};
-        } else {
-            m_target.clear();
-        }
-        if (!other.m_query.empty()) {
-            m_query = {m_representation.data() + queryStart, other.m_query.size()};
-        } else {
-            m_query.clear();
-        }
+        m_representation = other.m_representation;
+        viewsFromOther(other);
         return *this;
+    }
+
+    bool valid() const noexcept
+    {
+        // Minimum is just a hostname
+        return !m_host.empty();
     }
 
     boost::string_view scheme() const
     {
-        if (!m_scheme.empty()) {
-            return m_scheme;
+        if (m_scheme.empty() && valid()) {
+            return SchemeHttp;
         }
-        return "http";
+        return m_scheme;
     }
 
     boost::string_view host() const { return m_host; }
 
     boost::string_view port() const
     {
-        if (!m_port.empty()) {
-            return m_port;
+        if (m_port.empty() && valid()) {
+            return m_scheme == SchemeHttps
+                ? DefaultHttpsPort
+                : m_scheme == SchemeFtp ? DefaultFtpPort : DefaultHttpPort;
         }
-        return m_scheme == "https" ? "443" : "80";
+        return m_port;
     }
 
     boost::string_view username() const { return m_username; }
@@ -165,11 +137,13 @@ public:
 
     boost::string_view target() const
     {
-        if (!m_target.empty()) {
-            return m_target;
+        if (m_target.empty() && valid()) {
+            return DefaultTarget;
         }
-        return "/";
+        return m_target;
     }
+
+    boost::string_view path() const { return m_path; }
 
     boost::string_view query() const { return m_query; }
 
@@ -182,6 +156,12 @@ public:
     void setScheme(boost::string_view scheme) { m_scheme = scheme; }
 
 private:
+    static constexpr char DefaultTarget[2]{"/"};
+    static constexpr char DefaultScheme[5]{"http"};
+    static constexpr char DefaultHttpPort[3]{"80"};
+    static constexpr char DefaultHttpsPort[4]{"443"};
+    static constexpr char DefaultFtpPort[3]{"21"};
+
     void parseRepresentation()
     {
         constexpr size_t SchemeLoc{2};
@@ -190,13 +170,15 @@ private:
         constexpr size_t HostLoc{6};
         constexpr size_t PortLoc{8};
         constexpr size_t TargetLoc{9};
+        constexpr size_t PathLoc{10};
         constexpr size_t QueryLoc{13};
 
-        const boost::regex http_reg("^((https?|ftp):\\/\\/)?" // scheme
-                                    "(([^\\s$.?#].?[^\\s\\/]*):([^\\s$.?#].?[^\\s\\/]*)@)?" // auth
-                                    "([^\\s$.?#].[^\\s\\/:]*)"                              // host
-                                    "(:([0-9]+))?"                                          // port
-                                    "(([^\\s?#]*)?(([\\?#])([^\\s]*))?)?$"); // target
+        static const boost::regex http_reg(
+            "^((https?|ftp):\\/\\/)?"                               // scheme
+            "(([^\\s$.?#].?[^\\s\\/]*):([^\\s$.?#].?[^\\s\\/]*)@)?" // auth
+            "([^\\s$.?#].[^\\s\\/:]+)"                              // host
+            "(:([0-9]+))?"                                          // port
+            "(([^\\s?#]*)?(([\\?#])([^\\s]*))?)?$");                // target (path?query)
         boost::string_view represent{m_representation};
         auto start = represent.cbegin();
         auto end = represent.cend();
@@ -221,6 +203,9 @@ private:
             size = static_cast<boost::string_view::size_type>(
                 std::distance(matches[TargetLoc].first, matches[TargetLoc].second));
             m_target = boost::string_view{matches[TargetLoc].first, size};
+            size = static_cast<boost::string_view::size_type>(
+                std::distance(matches[PathLoc].first, matches[PathLoc].second));
+            m_path = boost::string_view{matches[PathLoc].first, size};
             size = static_cast<boost::string_view::size_type>(
                 std::distance(matches[QueryLoc].first, matches[QueryLoc].second));
             m_query = boost::string_view{matches[QueryLoc].first, size};
@@ -263,7 +248,13 @@ private:
             const auto targetStart = view_start(other.m_representation, other.m_target);
             m_target = {m_representation.data() + targetStart, other.m_target.size()};
         } else {
-            m_target.clear();
+            m_path.clear();
+        }
+        if (!other.m_path.empty()) {
+            const auto pathStart = view_start(other.m_representation, other.m_path);
+            m_path = {m_representation.data() + pathStart, other.m_path.size()};
+        } else {
+            m_path.clear();
         }
         if (!other.m_query.empty()) {
             const auto queryStart = view_start(other.m_representation, other.m_query);
@@ -279,6 +270,7 @@ private:
     boost::string_view m_port;
     boost::string_view m_username;
     boost::string_view m_password;
+    boost::string_view m_path;
     boost::string_view m_target;
     boost::string_view m_query;
 };
