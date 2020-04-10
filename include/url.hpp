@@ -30,42 +30,50 @@ public:
     url(boost::string_view url) : m_representation{url.to_string()} { parseRepresentation(); }
 
     url(boost::string_view host, boost::string_view target,
-        boost::string_view scheme = boost::string_view(),
-        boost::string_view port = boost::string_view(),
-        boost::string_view username = boost::string_view(),
-        boost::string_view password = boost::string_view())
+        boost::string_view scheme = boost::string_view{},
+        boost::string_view port = boost::string_view{},
+        boost::string_view username = boost::string_view{},
+        boost::string_view password = boost::string_view{})
     {
+        size_t host_off{};
+        size_t port_off{};
+        size_t username_off{};
+        size_t password_off{};
+        size_t target_off{};
         if (!scheme.empty()) {
             m_representation = scheme.to_string();
             m_representation += "://";
-            m_scheme = boost::string_view{m_representation.data(), scheme.length()};
         }
-        if (!username.empty()) {
-            size_t username_off = m_representation.length();
-            m_representation += username.to_string();
-            m_username =
-                boost::string_view{m_representation.data() + username_off, username.length()};
-            if (!password.empty()) {
-                m_representation + ':';
-                size_t password_off = m_representation.length();
-                m_representation += password.to_string();
-                m_representation += '@';
-                m_password =
-                    boost::string_view{m_representation.data() + password_off, password.length()};
-            }
+        if (!username.empty() && !password.empty()) {
+            username_off = m_representation.length();
+            m_representation += username.to_string() + ':';
+            password_off = m_representation.length();
+            m_representation += password.to_string();
+            m_representation += '@';
         }
-        size_t host_off = m_representation.length();
+        host_off = m_representation.length();
         m_representation += host.to_string();
-        m_host = boost::string_view{m_representation.data() + host_off, host.length()};
         if (!port.empty()) {
             m_representation += ':';
-            size_t port_off = m_representation.length();
+            port_off = m_representation.length();
             m_representation += port.to_string();
+        }
+        target_off = m_representation.length();
+        m_representation += target.to_string();
+        m_host = boost::string_view{m_representation.data() + host_off, host.length()};
+        m_target = boost::string_view{m_representation.data() + target_off, target.length()};
+        if (!scheme.empty()) {
+            m_scheme = boost::string_view{m_representation.data(), scheme.length()};
+        }
+        if (!username.empty() && !password.empty()) {
+            m_username =
+                boost::string_view{m_representation.data() + username_off, username.length()};
+            m_password =
+                boost::string_view{m_representation.data() + password_off, password.length()};
+        }
+        if (!port.empty()) {
             m_port = boost::string_view{m_representation.data() + port_off, port.length()};
         }
-        size_t target_off = m_representation.length();
-        m_representation += target.to_string();
-        m_target = boost::string_view{m_representation.data() + target_off, target.length()};
         const auto sep = m_target.find('?');
         if (sep != m_target.npos) {
             size_t query_off = target_off + sep + 1;
@@ -215,8 +223,7 @@ private:
     void viewsFromOther(const url& other)
     {
         if (!other.m_scheme.empty()) {
-            const auto schemeStart = view_start(other.m_representation, other.m_scheme);
-            m_scheme = {m_representation.data() + schemeStart, other.m_scheme.size()};
+            m_scheme = {m_representation.data(), other.m_scheme.size()};
         } else {
             m_scheme.clear();
         }

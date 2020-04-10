@@ -60,6 +60,34 @@ int main(int /*argc*/, char* /*argv*/[])
         assert(broken.host().empty());
         assert(broken.query().empty());
 
+        simple_http::url copy = testUserNameAndPassword;
+
+        assert(copy.scheme() == testUserNameAndPassword.scheme());
+        assert(copy.username() == testUserNameAndPassword.username());
+        assert(copy.password() == testUserNameAndPassword.password());
+        assert(copy.host() == testUserNameAndPassword.host());
+        assert(copy.target() == testUserNameAndPassword.target());
+
+        simple_http::url by_parts{"example.com", "/path?query", "https", "8443", "user", "pass"};
+
+        assert(by_parts.scheme() == "https");
+        assert(by_parts.username() == "user");
+        assert(by_parts.password() == "pass");
+        assert(by_parts.host() == "example.com");
+        assert(by_parts.port() == "8443");
+        assert(by_parts.path() == "/path");
+        assert(by_parts.query() == "query");
+
+        copy = by_parts;
+
+        assert(copy.scheme() == "https");
+        assert(copy.username() == "user");
+        assert(copy.password() == "pass");
+        assert(copy.host() == "example.com");
+        assert(copy.port() == "8443");
+        assert(copy.path() == "/path");
+        assert(copy.query() == "query");
+
         std::cout << "simple_http::url tests complete\n";
 
         // Run an asynchronous client test - connect with Digest Authentication
