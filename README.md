@@ -21,8 +21,8 @@ auto client = std::make_shared<simple_http::get_client>(
       std::cout << resp << '\n';
     });
 // Optionally set a fail action
-client->setFailHandler([](simple_http::empty_body_request &req,
-                        simple_http::string_body_response &resp,
+client->setFailHandler([](const simple_http::empty_body_request &req,
+                        const simple_http::string_body_response &resp,
                         simple_http::fail_reason fr, 
                         boost::string_view message) {
     // Display the error message.
@@ -43,7 +43,7 @@ Supports the following:
 * Redirection
 * Action on failure
 
-Contains a URL parser based on Boost.Regex which accepts URLs as a string (similar to RFC3986), or as components.
+Contains a URL class that can parse strings, based on Boost.Regex, accepting URLs similar to RFC3986, or can be constructed from components.
 
 ```c++
 // Simple string format
@@ -60,3 +60,5 @@ When building, you must link the following:
 * pthread - on Linux only
 * Boost Regex
 * Boost System - Alternately define "BOOST_ERROR_CODE_HEADER_ONLY"
+
+See the example directory for a working CMake project (tested on Windows and Linux)

@@ -73,11 +73,11 @@ public:
     static std::shared_ptr<client_private<RequestBody, ResponseBody>> privateForRequest(
         const url& uri, std::shared_ptr<basic_client<RequestBody, ResponseBody>> cl)
     {
-        if (uri.scheme() == url::SchemeHttp) {
+        if (uri.scheme() == url::SchemeHttp()) {
             return std::make_shared<HttpPrivate>(cl->m_io, cl);
         }
 #ifdef ENABLE_HTTPS
-        if (uri.scheme() == url::SchemeHttps) {
+        if (uri.scheme() == url::SchemeHttps()) {
             return std::make_shared<SslPrivate>(cl->m_io, cl);
         }
 #endif

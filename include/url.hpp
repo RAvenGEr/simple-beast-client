@@ -21,9 +21,9 @@ class url
     }
 
 public:
-    static constexpr char SchemeHttps[6]{"https"};
-    static constexpr char SchemeHttp[5]{"http"};
-    static constexpr char SchemeFtp[4]{"ftp"};
+    static constexpr boost::string_view SchemeHttp() { return "http"; }
+    static constexpr boost::string_view SchemeHttps() { return "https"; }
+    static constexpr boost::string_view SchemeFtp() { return "ftp"; }
 
     url() noexcept = default;
 
@@ -129,7 +129,7 @@ public:
     boost::string_view scheme() const
     {
         if (m_scheme.empty() && valid()) {
-            return SchemeHttp;
+            return SchemeHttp();
         }
         return m_scheme;
     }
@@ -139,9 +139,9 @@ public:
     boost::string_view port() const
     {
         if (m_port.empty() && valid()) {
-            return m_scheme == SchemeHttps
-                ? DefaultHttpsPort
-                : m_scheme == SchemeFtp ? DefaultFtpPort : DefaultHttpPort;
+            return m_scheme == SchemeHttps()
+                ? DefaultHttpsPort()
+                : m_scheme == SchemeFtp() ? DefaultFtpPort() : DefaultHttpPort();
         }
         return m_port;
     }
@@ -153,7 +153,7 @@ public:
     boost::string_view target() const
     {
         if (m_target.empty() && valid()) {
-            return DefaultTarget;
+            return DefaultTarget();
         }
         return m_target;
     }
@@ -171,11 +171,11 @@ public:
     void setScheme(boost::string_view scheme) { m_scheme = scheme; }
 
 private:
-    static constexpr char DefaultTarget[2]{"/"};
-    static constexpr char DefaultScheme[5]{"http"};
-    static constexpr char DefaultHttpPort[3]{"80"};
-    static constexpr char DefaultHttpsPort[4]{"443"};
-    static constexpr char DefaultFtpPort[3]{"21"};
+    static constexpr boost::string_view DefaultTarget() { return "/"; }
+    static constexpr boost::string_view DefaultScheme() { return SchemeHttp(); };
+    static constexpr boost::string_view DefaultHttpPort() { return "80"; }
+    static constexpr boost::string_view DefaultHttpsPort() { return "443"; }
+    static constexpr boost::string_view DefaultFtpPort() { return "21"; }
 
     void parseRepresentation()
     {

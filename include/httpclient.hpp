@@ -122,7 +122,7 @@ private:
         m_failHandler;
     client_state m_state;
 
-    boost::string_view userAgent() const noexcept { return "simple-beast-client/1.1"; }
+    boost::string_view userAgent() const noexcept { return "simple-beast-client/1.2"; }
 
     void failure(fail_reason reason, boost::string_view message)
     {
