@@ -40,16 +40,21 @@ public:
         size_t username_off{};
         size_t password_off{};
         size_t target_off{};
+        m_representation.reserve(host.length() + scheme.length() + port.length() +
+                                 username.length() + password.length() + 6);
         if (!scheme.empty()) {
             m_representation = scheme.to_string();
             m_representation += "://";
         }
-        if (!username.empty() && !password.empty()) {
+        if (!username.empty()) {
             username_off = m_representation.length();
-            m_representation += username.to_string() + ':';
-            password_off = m_representation.length();
-            m_representation += password.to_string();
-            m_representation += '@';
+            m_representation += username.to_string();
+            if (!password.empty()) {
+                m_representation += ':';
+                password_off = m_representation.length();
+                m_representation += password.to_string();
+                m_representation += '@';
+            }
         }
         host_off = m_representation.length();
         m_representation += host.to_string();
@@ -65,11 +70,13 @@ public:
         if (!scheme.empty()) {
             m_scheme = boost::string_view{m_representation.data(), scheme.length()};
         }
-        if (!username.empty() && !password.empty()) {
+        if (!username.empty()) {
             m_username =
                 boost::string_view{m_representation.data() + username_off, username.length()};
-            m_password =
-                boost::string_view{m_representation.data() + password_off, password.length()};
+            if (password_off > 0) {
+                m_password =
+                    boost::string_view{m_representation.data() + password_off, password.length()};
+            }
         }
         if (!port.empty()) {
             m_port = boost::string_view{m_representation.data() + port_off, port.length()};
@@ -174,19 +181,19 @@ private:
     {
         constexpr size_t SchemeLoc{2};
         constexpr size_t UserLoc{4};
-        constexpr size_t PassLoc{5};
-        constexpr size_t HostLoc{6};
-        constexpr size_t PortLoc{8};
-        constexpr size_t TargetLoc{9};
-        constexpr size_t PathLoc{10};
-        constexpr size_t QueryLoc{13};
+        constexpr size_t PassLoc{6};
+        constexpr size_t HostLoc{7};
+        constexpr size_t PortLoc{9};
+        constexpr size_t TargetLoc{10};
+        constexpr size_t PathLoc{11};
+        constexpr size_t QueryLoc{14};
 
         static const boost::regex http_reg(
-            "^((https?|ftp):\\/\\/)?"                               // scheme
-            "(([^\\s$.?#].?[^\\s\\/]*):([^\\s$.?#].?[^\\s\\/]*)@)?" // auth
-            "([^\\s$.?#].[^\\s\\/:]+)"                              // host
-            "(:([0-9]+))?"                                          // port
-            "(([^\\s?#]*)?(([\\?#])([^\\s]*))?)?$");                // target (path?query)
+            "^((https?|ftp):\\/\\/)?"                                   // scheme
+            "(([^\\s$.?#].?[^\\s\\/:]*)(:([^\\s$.?#].?[^\\s\\/]*))?@)?" // auth
+            "([^\\s$.?#].[^\\s\\/:]+)"                                  // host
+            "(:([0-9]+))?"                                              // port
+            "(([^\\s?#]*)?(([\\?#])([^\\s]*))?)?$");                    // target (path?query)
         boost::string_view represent{m_representation};
         auto start = represent.cbegin();
         auto end = represent.cend();

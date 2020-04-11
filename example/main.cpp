@@ -22,6 +22,7 @@ int main(int /*argc*/, char* /*argv*/[])
         simple_http::url test5{"http://33.com:400/target"};
         simple_http::url test6{"http://user:pass@33.com"};
         simple_http::url test7{"http://user:pass@33.com:400/target?val=1&val2=2"};
+        simple_http::url test8{"user@example.com"};
 
         assert(test.scheme() == "http");
 
@@ -43,6 +44,9 @@ int main(int /*argc*/, char* /*argv*/[])
         assert(test7.port() == "400");
         assert(test7.path() == "/target");
         assert(test7.query() == "val=1&val2=2");
+
+        assert(test8.username() == "user");
+        assert(test8.host() == "example.com");
 
         simple_http::url testUserNameAndPassword{"https://user76:myP@55w0rd@example.com/path"};
 
