@@ -15,9 +15,9 @@
 #include <type_traits>
 #include <utility>
 
-#if defined(ENABLE_HTTPS) || defined(ENABLE_DIGEST)
-#ifndef ENABLE_DIGEST
-#define ENABLE_DIGEST
+#if defined(SIMPLE_BEAST_CLIENT_ENABLE_HTTPS) || defined(SIMPLE_BEAST_CLIENT_ENABLE_DIGEST)
+#ifndef SIMPLE_BEAST_CLIENT_ENABLE_DIGEST
+#define SIMPLE_BEAST_CLIENT_ENABLE_DIGEST
 #endif
 #include "digestauthenticator.hpp"
 #endif
@@ -76,7 +76,7 @@ public:
         if (uri.scheme() == url::SchemeHttp()) {
             return std::make_shared<HttpPrivate>(cl->m_io, cl);
         }
-#ifdef ENABLE_HTTPS
+#ifdef SIMPLE_BEAST_CLIENT_ENABLE_HTTPS
         if (uri.scheme() == url::SchemeHttps()) {
             return std::make_shared<SslPrivate>(cl->m_io, cl);
         }
@@ -310,7 +310,7 @@ protected:
             return false;
         }
         if (boost::ifind_first(authenticate, "digest")) {
-#ifdef ENABLE_DIGEST
+#ifdef SIMPLE_BEAST_CLIENT_ENABLE_DIGEST
             return generateDigestAuth(authenticate, boost::string_view());
 #else
             return false;
@@ -329,7 +329,7 @@ protected:
                       "Basic " + base64::encode(credentials));
     }
 
-#ifdef ENABLE_DIGEST
+#ifdef SIMPLE_BEAST_CLIENT_ENABLE_DIGEST
     bool generateDigestAuth(boost::string_view authenticate, boost::string_view body)
     {
         digest_authenticator authenticator(authenticate, c->m_username, c->m_password,

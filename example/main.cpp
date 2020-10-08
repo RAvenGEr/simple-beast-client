@@ -2,7 +2,7 @@
 * simple-beast-client example
 */
 
-#include "httpclient.hpp"
+#include <simple-beast-client/httpclient.hpp>
 #include <boost/asio.hpp>
 #include <cassert>
 #include <iostream>
@@ -17,26 +17,33 @@ int main(int /*argc*/, char* /*argv*/[])
         // URL parsing validation tests.
         simple_http::url test{"http://test.com/target"};
         simple_http::url test2{"www.test.com/target2"};
+#ifdef SIMPLE_BEAST_CLIENT_ENABLE_HTTPS
         simple_http::url test3{"https://test.com"};
+#endif
         simple_http::url test4{"test.com:80"};
         simple_http::url test5{"http://33.com:400/target"};
+#ifdef SIMPLE_BEAST_CLIENT_ENABLE_DIGEST
         simple_http::url test6{"http://user:pass@33.com"};
         simple_http::url test7{"http://user:pass@33.com:400/target?val=1&val2=2"};
+#endif
         simple_http::url test8{"user@example.com"};
 
         assert(test.scheme() == "http");
 
         assert(test2.host() == "www.test.com");
         assert(test2.path() == "/target2");
-
+        
+#ifdef SIMPLE_BEAST_CLIENT_ENABLE_HTTPS
         assert(test3.scheme() == "https");
-
+#endif
+        
         assert(test4.host() == "test.com");
         assert(test4.port() == "80");
 
         assert(test5.host() == "33.com");
         assert(test5.port() == "400");
 
+#ifdef SIMPLE_BEAST_CLIENT_ENABLE_DIGEST
         assert(test6.scheme() == "http");
         assert(test6.username() == "user");
         assert(test6.password() == "pass");
@@ -44,6 +51,7 @@ int main(int /*argc*/, char* /*argv*/[])
         assert(test7.port() == "400");
         assert(test7.path() == "/target");
         assert(test7.query() == "val=1&val2=2");
+#endif
 
         assert(test8.username() == "user");
         assert(test8.host() == "example.com");

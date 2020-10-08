@@ -9,7 +9,7 @@
 #include <boost/beast/http.hpp>
 #include <memory>
 #include <string>
-#ifdef ENABLE_HTTPS
+#ifdef SIMPLE_BEAST_CLIENT_ENABLE_HTTPS
 #include "client_private_ssl.hpp"
 #endif
 

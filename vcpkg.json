@@ -1,0 +1,11 @@
+{
+	"name": "simple-beast-client",
+	"version-string": "0.1.0",
+	"dependencies": [
+		"boost-date-time",
+		"boost-regex",
+		"boost-system",
+		"openssl",
+		"cppcodec"
+	]
+}
